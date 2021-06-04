@@ -7,22 +7,21 @@ Server::Server(int nPort, QWidget *parent) :
 {
     ui->setupUi(this);
 
-    mTcpServer = new QTcpServer(this);
-       if (!mTcpServer->listen(QHostAddress::Any, nPort))
-       {
-           QMessageBox::critical(0,"Server Error",
-                                 "Unable to start the server:"
-                                 + mTcpServer->errorString()
-                                );
-           mTcpServer->close();
-           return;
-       }
-       connect(mTcpServer, SIGNAL(newConnection()),
-               this,         SLOT(slotNewConnection())
-              );
+    m_TcpServer = new QTcpServer(this);
+
+    //Start server
+    if (!m_TcpServer->listen(QHostAddress::Any, nPort)) {
+
+        QMessageBox::critical(0,"Error",
+                              QString("Unable to start the server: %1").arg(m_TcpServer->errorString()));
+
+        m_TcpServer->close();
+        return;
+    }
 
 
-
+    connect(m_TcpServer, SIGNAL(newConnection()),
+            this, SLOT(slotNewConnection()));
 
 }
 
@@ -33,39 +32,33 @@ Server::~Server()
 
 void Server::slotRead()
 {
-
-
-    QDataStream in(mTcpSocket);
+    QDataStream in(m_TcpSocket);
     in.setVersion(QDataStream::Qt_5_12);
     if (m_blockSize == 0) {
-            if (mTcpSocket->bytesAvailable() < sizeof(quint32))
-            return;
-            in >> m_blockSize;
-        }
-        if (mTcpSocket->bytesAvailable() < m_blockSize)
+
+        if (m_TcpSocket->bytesAvailable() < sizeof(qint64))
             return;
 
+        in >> m_blockSize;
+    }
 
-        QString fileName;
-        // get sending file name
-        in >> fileName;
-        qDebug()<<fileName;
-        QByteArray line = mTcpSocket->readAll();
-        QByteArray ll;
-        ll.append(line);
-        qDebug()<<"LINE SIZE"<<ll.size();
+    if (m_TcpSocket->bytesAvailable() < m_blockSize)
+        return;
 
-        QFile target("C:/" + fileName);
+    QString fileName;
+    in >> fileName;
 
+    QByteArray packet = m_TcpSocket->readAll();
+    QFile target("C:/" + fileName);
 
+    if (!target.open(QIODevice::WriteOnly)) {
+        return;
+    }
 
-        if (!target.open(QIODevice::WriteOnly)) {
-            qDebug() << "Can't open file for written";
-            return;
-        }
-        target.write(ll);
-        target.close();
+    target.write(packet);
+    target.close();
 
+    m_blockSize = 0;
 }
 
 void Server::slotNewConnection()
@@ -73,19 +66,13 @@ void Server::slotNewConnection()
 
     QMessageBox::information(0,"Info","Status connect - succsesfull");
 
-            mTcpSocket = mTcpServer->nextPendingConnection();
+    m_TcpSocket = m_TcpServer->nextPendingConnection();
 
-       connect(mTcpSocket, SIGNAL(disconnected()),
-               mTcpSocket, SLOT(deleteLater()));
+    connect(m_TcpSocket, SIGNAL(disconnected()),
+            m_TcpSocket, SLOT(deleteLater()));
 
-       connect(mTcpSocket, SIGNAL(readyRead()),
-               this, SLOT(slotRead()));
-
-//       connect(mTcpSocket,&QTcpSocket::readyRead,this,
-//               &Server::slotRead);
-
-      // sendToClient(pClientSocket, "Server Response: Connected!");
-
+    connect(m_TcpSocket, SIGNAL(readyRead()),
+            this, SLOT(slotRead()));
 
 }
 

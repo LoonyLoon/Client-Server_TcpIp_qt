@@ -6,10 +6,8 @@
 #include <QTcpSocket>
 #include <QMessageBox>
 #include <QDataStream>
-#include <QDir>
-#include <QVector>
 #include <QFile>
-#include <QIODevice>
+
 
 namespace Ui {
 class Server;
@@ -23,18 +21,17 @@ public:
     explicit Server(int nPort, QWidget *parent = 0);
     ~Server();
 
-private:
-    Ui::Server *ui;
-
-    QTcpServer * mTcpServer;
-    QTcpSocket * mTcpSocket;
-    qint32      m_blockSize = 0;
-
-
 private slots:
     void slotRead();
     void slotNewConnection();
 
+private:
+    Ui::Server *ui;
+
+    QTcpServer  *m_TcpServer;
+    QTcpSocket  *m_TcpSocket;
+
+    qint64       m_blockSize = 0;
 };
 
 #endif // SERVER_H
